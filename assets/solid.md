@@ -38,6 +38,56 @@ Por obvio que acoplamento nem sempre é ruim, se uma classe sabe fazer somente o
 
 Uma forma de perceber o alto acoplamento são os problemas causados quando alteramos uma classe, meio que todas as outras ficam sabendo, pois irão quebrar. Um exemplo seria, uma classe retorna uma `List` com valores da fatura, para saber o total da fatura outra classe faz um `for` para calcular. Até ai "tranks", mas a primeira classe não retorna mais uma `List` e sim um `HashMap`, meio que deu ruim. Seria muito interessante se existisse o método `getValorFatura()` nela.
 
+## Melhorando a Coesão
+
+Para iniciar imagine, que dentre outras coisas, nossa classe **Funcionario** contenha a seguinte validação:
+
+```java
+public void reajustarSalario(BigDecimal aumento) {
+    BigDecimal percentualReajuste = aumento.divide(salario, RoundingMode.HALF_UP);
+    if (percentualReajuste.compareTo(new BigDecimal("0.4")) > 0) {
+        throw new ValidacaoException("Reajuste nao pode ser superior a 40% do salario!");
+    }
+    this.salario = this.salario.add(aumento);
+    this.dataUltimoReajuste = LocalDate.now();
+}
+```
+
+À principio pode parecer que está tudo certo, afinal salário é algo do funcionário e calcular seu reajustes deve ser obrigação da classe **Funcionario**. Mas veja, a primeira coisa que vimos foi a **coesão**, *uma classe deve saber fazer muito bem uma coisa*, a coisa que essa classe deveria saber fazer é conter as informações do funcionário, e não ficar validando regras de negócio.
+
+Vamos refatorar o role; podemos usar a **Extrair Classe**, de método à classe, e criar a classe **ReajusteService**.
+
+```java
+public class ReajusteService {
+public void reajustarSalarioDoFuncionario(Funcionario funcionario, BigDecimal aumento){
+    BigDecimal salarioAtual = funcionario.getSalario();
+    BigDecimal percentualReajuste = aumento.divide(salarioAtual, RoundingMode.HALF_UP);
+    if (percentualReajuste.compareTo(new BigDecimal("0.4")) > 0) {
+        throw new ValidacaoException("Reajuste nao pode ser superior a 40% do salario!");
+    }
+    BigDecimal salarioReajustado = salarioAtual.add(aumento);
+    funcionario.atualizarSalario(salarioReajustado);
+}
+}
+```
+
+De tal forma que nossa classe **Funcionario** passaria a ter o método:
+
+```java
+public void atualizarSalario(BigDecimal novoSalario) {
+    this.salario = novoSalario;
+    this.dataUltimoReajuste = LocalDate.now();
+}
+```
+
+>Para mim ainda ficou faltando alguma coisa nesse processo, como estou no começo do curso darei o braço a torcer.
+
+De qualquer forma, já começou a ficar melhor do que antes. Agora essa parte do código está mais clara e de fácil entendimento.
+
+E chegamos a segunda aula desse módulo, realmente ficou faltando algo, será resolvido quando avançarmos nas letras. Acabamos de aplicar o **S**, Single Responsibility Principle, só porque você pode não signifia que deva. Só porque a classe funcionário pode calcular o seu reajuste não quer dizer que ela deva.
+
+Achei algo interresante nessa aula, uma classe deveria ter apenas um único motivo para mudar. Esse motivo deve estar alinhado com o ser dela. Creio que isso resume muito bem o **S**, até porque isso está de acordo com o ser da coisas, olhando por um lado filosófico, para que algo tenha uma forma ela deve se limitar, ter limiter bem definidos. Esse é o ponto, uma classe deve ter limites que definem o que ela é, **Funcionario**: "eu sou uma classe que contém as informações de cadastro do funcionário", só isso, **ReajusteService**: "eu sou uma classe que controla o reajuste salárial", só isso. Veja como agora temos uma forma, a classe é bem definida, essa, talvez, seja uma forma mais fácil de pensar no **S**.
+
 ## Referências
 
 [Normalizando um banco de dados por meio das 3 principais formas](https://spaceprogrammer.com/bd/normalizando-um-banco-de-dados-por-meio-das-3-principais-formas/)

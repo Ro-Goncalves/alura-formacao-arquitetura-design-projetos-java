@@ -7,3 +7,4 @@ Rogo a Deus para que me mantenha na busca pela Verdade, tudo o que eu faça que 
 ## Cursos Das Formação
 
 * [S.O.L.I.D. Com Java: Pincípios da Programação Orientada a Objetos](assets/solid.md)
+  * Pacote do projeto: `com.br.rogon.arquiteturadesignjava.solid`.
