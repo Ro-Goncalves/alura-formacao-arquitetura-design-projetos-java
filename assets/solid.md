@@ -88,6 +88,87 @@ E chegamos a segunda aula desse módulo, realmente ficou faltando algo, será re
 
 Achei algo interresante nessa aula, uma classe deveria ter apenas um único motivo para mudar. Esse motivo deve estar alinhado com o ser dela. Creio que isso resume muito bem o **S**, até porque isso está de acordo com o ser da coisas, olhando por um lado filosófico, para que algo tenha uma forma ela deve se limitar, ter limiter bem definidos. Esse é o ponto, uma classe deve ter limites que definem o que ela é, **Funcionario**: "eu sou uma classe que contém as informações de cadastro do funcionário", só isso, **ReajusteService**: "eu sou uma classe que controla o reajuste salárial", só isso. Veja como agora temos uma forma, a classe é bem definida, essa, talvez, seja uma forma mais fácil de pensar no **S**.
 
+## Reduzindo o Acoplamento
+
+Agora o código vai evoluir bastante, iremos implementar uma nova regra de reajuste, será uma que avaliará o quando o funcionário recebeu o último reajuste, ele não pode receber reajustes caso tenha recebido um a menos de 6 meses.
+
+Antes de sair escrevendo código, vamos relembrar um ponto que comentamos:
+
+>Uma classe deve ter um único motivo para ser alterada.
+
+Criar uma nova regra de reajustes em **ReajusteService**, fere essa regra? Aparentemente não. Segue esse raciocinio: Ao fazer isso a classe **ReajusteService** poderá ser alterada quando: mudar a regra para o percentual máximo de reajuste ou quando alterar a restrição de 6 meses. Viu dois motivos.
+
+E é por isso que criarei duas classes, uma para cada regra. E irei além ainda. Parece ser intuitivo que para validar qualquer regra de reajuste, a classes que a fará, deve receber um funcionario e o valor do aumento. Ora, é evidente que podemos criar uma interface que define quais métodos as classes de reajustes devem ter, e é por aqui que começaremos. Cabendo as classes de regras a materialização de tal.
+
+Nossa inteface será bem simple, seria o que podemos chamar de [inteface funcional](https://br.sensedia.com/post/functional-interfaces-java-8), entenderemos o porque daqui à pouco.
+
+```java
+public interface ValidacaoReajuste {    
+    void validar(Funcionario funcionario, BigDecimal aumento);
+}
+```
+
+Basta criar as classes com a regra de cada caso implementando nossa interface.
+
+```java
+public class ValidacaoPercentualReajuste implements ValidacaoReajuste {
+ 
+    @Override
+    public void validar(Funcionario funcionario, BigDecimal aumento){
+        BigDecimal salarioAtual = funcionario.getSalario();
+        BigDecimal percentualReajuste = aumento.divide(salarioAtual, RoundingMode.HALF_UP);
+        if (percentualReajuste.compareTo(new BigDecimal("0.4")) > 0) {
+            throw new ValidacaoException("Reajuste nao pode ser superior a 40% do salario!");
+        }
+    }
+}
+
+public class ValidacaoPeridiocidadeEntreReajustes implements ValidacaoReajuste {
+    
+    @Override
+    public void validar(Funcionario funcionario, BigDecimal aumento){
+        LocalDate dataUltimoReajuste = funcionario.getDataUltimoReajuste();
+        LocalDate dataAtual = LocalDate.now();
+        //ChronoUnit gostei desse cara aqui, não tinha visto antes, quero estudar mais sobre ele
+        long mesesDesdoUltimoReajuste = ChronoUnit.MONTHS.between(dataUltimoReajuste, dataAtual);
+        if(mesesDesdoUltimoReajuste < 6){
+            throw new ValidacaoException("Intervalo entre reajustes menor do que 6 meses.");
+        }
+    }
+}
+```
+
+E a mágica vai acontecer agora, mostrarei a **ReajusteService**, depois comento.
+
+```java
+public class ReajusteService {
+
+    private List<ValidacaoReajuste> validacoes;
+    
+    public ReajusteService(List<ValidacaoReajuste> validacoes) {
+        this.validacoes = validacoes;
+    }
+    
+    public void reajustarSalarioDoFuncionario(Funcionario funcionario, BigDecimal aumento){        
+        this.validacoes.forEach(v -> v.validar(funcionario, aumento));
+
+        BigDecimal salarioReajustado = funcionario.getSalario().add(aumento);
+        funcionario.atualizarSalario(salarioReajustado);
+    }
+}
+```
+
+A primeira coisa que podemos notar é o atributo `List<ValidacaoReajuste> validacoes`, iremos usar as vantagens do polimorfismo. Ao instânciar essa classe ela receberá uma lista com as validações que deve realizar. Olhemos ao método `reajustarSalarioDoFuncionario`, olha que legal o que da para fazer, lembra que criamos uma interface funcional? Bem, ela permite que façamos algo assim: `this.validacoes.forEach(v -> v.validar(funcionario, aumento));` usar uma *lambda*, "toper".
+Se tudo der certo, o funcionário receberá o reajuste.
+
+Olha o que ganhamos com essa brincadeira toda, ao implementar uma nova regra para reajuste não precisaremos mexer no código existente, somente criar uma nova classe de validação impementando a interface **ValidacaoReajuste**, e incluí-la na `List` que será passada à **ReajusteService**. Somente eu que estou impressionado aqui?
+
+E acabamos de ver o **O**, a classe ficou extencivel sem adicionar código. A cada nova implemntação não precisamos abrir a classe, somente criar outra, com isso não mexeremos em código existente.
+
+Segue o **O** de forma mais técnica:
+
+>Entidades de software devem estar abertas par aextensão, porém fechadas para modificação quanto menos mexer em uma classe melhor.
+
 ## Referências
 
 [Normalizando um banco de dados por meio das 3 principais formas](https://spaceprogrammer.com/bd/normalizando-um-banco-de-dados-por-meio-das-3-principais-formas/)
