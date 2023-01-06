@@ -169,6 +169,140 @@ Segue o **O** de forma mais técnica:
 
 >Entidades de software devem estar abertas par aextensão, porém fechadas para modificação quanto menos mexer em uma classe melhor.
 
+## Herança Indesejada
+
+E vamos avançando nas letras como um quebra-gel no ártico, é a hora do **L**, um bom **L**, não um **L** escuso. Para tal, iremos criar uma uma regra de négocio, a promoção, quem não gosta de promoção, se o funcionário bater a meta, ele passará de cargo da seguinte forma **ASSISTENTE -> ANALISTA -> ESPECIALISTA -> GERENTE**.
+
+Primeira coisa a se fazer? Criar uma classe de serviço que controlará isso para nós, **PromocaoService**. Veja, da para perceber que o *GERENTE* não tem promoção, e que a regra é *se bater a meta*, logo um boleano. Podemos criar algo parecido com:
+
+```java
+public void promover(Funcionario funcionario, boolean metaBatida){
+    Cargo cargoAtual = funcionario.getDadosPessoais().getCargo();
+    if(Cargo.GERENTE == cargoAtual){
+        throw new ValidacaoException("Gerentes não podem ser promovidos!");
+    }
+
+    if(metaBatida){
+        Cargo novoCargo = cargoAtual.getProximoCargo();
+        funcionario.promover(novoCargo);
+    } else {
+        throw new ValidacaoException("Funcionário não bateu a meta!");
+    }
+}
+```
+
+Existem algumas coisas novas aqui, vamos por partes que chegaremos lá. Primeiro, quem dirá qual será o próximo cargo será o *enun* **Cargo**. Ao criarmos o método abstrato `getProximoCargo()`, o teremos que implementar em todos os atributos.
+
+```java
+public enum Cargo {
+
+    ASSISTENTE {
+        @Override
+        public Cargo getProximoCargo() {
+            return ANALISTA;
+        }
+    },
+    ANALISTA {
+        @Override
+        public Cargo getProximoCargo() {
+            return ESPECIALISTA;
+        }
+    },
+    ESPECIALISTA {
+        @Override
+        public Cargo getProximoCargo() {
+            return GERENTE;
+        }
+    },
+    GERENTE {
+        @Override
+        public Cargo getProximoCargo() {
+            return GERENTE;
+        }
+    };
+
+    public abstract Cargo getProximoCargo();
+}
+```
+
+Depois, basta criar o método `promover` no funcionário.
+
+```java
+public void promover(Cargo novoCargo) {
+    this.dadosPessoais.setCargo(novoCargo);
+}
+```
+
+Os mais expertos notaram que existe um método novo em **Funcionario** o `getDadosPessoais()`, acalme-te, vamos chegar nele, e será agora.
+
+Bem, a nova regra foi implementada sem muita dor de cabeça, porém, vamos colocar duas colheres de caos no bolo, agora teremos a classe **Terceirizado**, ele terá basicamente os mesmo atributos do **Funcionario**, afinal ele meio que é um. Ficaremos tentados a fazer o seguinte:
+
+```java
+public class Terceirizado extends Funcionario{
+
+    public Terceirizado(String nome, String cpf, Cargo cargo, BigDecimal salario) {
+        super(nome, cpf, cargo, salario);
+    }
+}
+```
+
+Uma consequência disso é podemos fazer:
+
+```java
+Terceirizado t1 = new Terceirizado("Rodrigo", "123123", "ANALISTA", 5000);
+t1.atualizarSalario(7000);
+```
+
+A pergunta é, eu posso aumentar o salário de um terceiro? Por obvio que não, logo nesse caso a herança mais atrapalha do que ajuda.
+
+Veja só fizemos isso porque alguns atributos e métodos são comuns as duas, uma outra forma de resolver seria criar a classe **DadosPessoais** e dentro de **Terceiros e Funcionarios** ter um atributo que referência essa classe.
+
+```java
+public class DadosPessoais {
+    
+    private String nome;
+    private String cpf;
+    private Cargo cargo;
+    private BigDecimal salario;
+
+    public DadosPessoais(String nome, String cpf, Cargo cargo, BigDecimal salario) {        
+        this.nome = nome;
+        this.cpf = cpf;
+        this.cargo = cargo;
+        this.salario = salario;
+    }
+    //Os roles que faltam
+}
+
+public class Funcionario {
+
+    private DadosPessoais dadosPessoais;
+    private LocalDate dataUltimoReajuste;
+
+    public Funcionario(String nome, String cpf, Cargo cargo, BigDecimal salario) {
+        dadosPessoais = new DadosPessoais(nome, cpf, cargo, salario);
+    }
+    //Os roles que faltam
+}
+
+public class Terceirizado {
+
+    DadosPessoais dadosPessoais;
+    private String empresa;
+
+    public Terceirizado(String nome, String cpf, Cargo cargo, BigDecimal salario) {
+        this.dadosPessoais = new DadosPessoais(nome, cpf, cargo, salario);
+    }
+    //Os roles que faltam
+}
+```
+
+Agora temos privilégio a algo chamado composição, removendo assim a herança de métodos que não fazem sentido a classe **Terceirizado**.
+
+O **L**, Liskov Substitution Principle, diz exatamente isso: **Se algo parece bosta, tem cheiro de bosta, gosto de bosta, mas não se comporta como uma bosta, ele não é um bosta**. Formalmente:
+
+>Se q(x) é uma propriedade demonstrável dos objetos x de tipo T, então q(y) deve ser verdadeiro para objetos y do tipo S, onde S é um subtipo de T".
+
 ## Referências
 
 [Normalizando um banco de dados por meio das 3 principais formas](https://spaceprogrammer.com/bd/normalizando-um-banco-de-dados-por-meio-das-3-principais-formas/)
