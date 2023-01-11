@@ -324,5 +324,7 @@ Se uma classe ao estender uma interface recebe tem que implementar métodos que 
 ## Referências
 
 [Normalizando um banco de dados por meio das 3 principais formas](https://spaceprogrammer.com/bd/normalizando-um-banco-de-dados-por-meio-das-3-principais-formas/)
+
 [Princípios S.O.L.I.D: o que são e porque projetos devem utilizá-los](https://mari-azevedo.medium.com/princ%C3%ADpios-s-o-l-i-d-o-que-s%C3%A3o-e-porque-projetos-devem-utiliz%C3%A1-los-bf496b82b299)
+
 [Julio Falbo - Minha Visão De Desenvolvedor Sobre Domain Driven Design DDD](https://julio-falbo.medium.com/minha-vis%C3%A3o-de-desenvolvedor-sobre-domain-driven-design-ddd-841afbe2fbc7)
