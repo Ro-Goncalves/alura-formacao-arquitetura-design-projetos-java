@@ -88,6 +88,136 @@ Caso não tenha ficado claro, a ***Context*** possui uma referência a inteface 
 
 ## Chain of Responsability
 
+Jordan B. Peterson, em seu livro 12 regras para a vida, diz que existe caos e ordem no mundo, que tudo tende ao caos e nós devemos trazer a ordem, tendo em vista que devemos nós manter sempre em cima do muro, onde de uma lado temos o caos e do outro a ordem.
+
+No epsódio anterior colocamos ordem no coreto; nesse, o caos. Além de impostos nosso sistema passará a dar descontos, a princípio por quantidade de itens e valor do pedido. A fim de concluir esse objetivo criamos a classe **CalculadoraDescontos**, com os famosos ***ifs***.
+
+```java
+public class CalculadoraDescontos {
+    public BigDecimal calcular (Orcamento orcamento){
+        if(orcamento.getQuantidadeItens().compareTo(5) >= 0){
+            return orcamento.getValor().multiply(new BigDecimal("0.1"));
+        }if (orcamento.getValor().compareTo(new BigDecimal("500")) > 0){
+            return orcamento.getValor().multiply(new BigDecimal("0.1"));
+        }
+        return BigDecimal.ZERO;
+    }
+}
+```
+
+Olhando para esse novo cenário, somos levados a tentar usar o padrão **Strategy**, porém essa seria uma estrategia errada, uma vez que não sabemos qual desconto deve ser aplicado. Nesse caso a vacina será outra, *uma já testada e comprovada*.
+
+E temos aqui um caso tipico para o uso do *Chain of Responsability*, que é um padrão comportamental que permite passa a solicitação ao longo de uma cadeia, cada classe irá decidir se processa o passa para frente.
+
+>Podemos usar esse padrão sempre que identificamos que as execuções de rotinas devem ser feitas em sequência.
+
+Cada rotina dessa será transformada em um objeto independente, o ***handler***, em nosso exemplo, cada regra de desconto virará uma classe. Cada **Handler** criado deverá conter a referência ao próximo, possibilitando que todos os **Handlers** possam ser executados.
+
+>Cada **Handler** pode descidir não passar a execução para frente, interrompendo o fluxo.
+
+Um outro exemplo são os eventos na janela de um programa, ao clicar em um botão ele navega por todos os elementos, aquele que quiser pode processar o evento. Caso tenha ficado meio *desclaro*, temos que tomar cuidado com a palavra **obscuro** agora, imagine uma árvore, com suas raizes ela puxa a água do solo, essa água vai passando pela raiz, troco, galho e folhas, ela pode ficar parada em qualquer parte desse caminho, ou sofrer alguma transformação quimica e ir para o próximo estágio. É a mesma coisa aqui, o cliente definirá qual caminho que a requisição deve passar, e a faz passar por ele, nesse caminho alguém poderá executar alguma rotina e decidir se a requisição deve ou não seguir para frente.
+
+Chega disso, creio que agora ficou *desescuro*, caso não, leia a referência.
+
+Chega de metáforas e vamos ao mundo real, primeiro de tudo o **D**, devemos criar uma interface que será comum a todos os **Concret Handlers**, pode ter somente um método para lidar com a requisição. Algumas vezes possui um método para definir o próximo **Concret Handler**, chamaremos essa interface de **Handler**. Uma classe opcional chamada **BaseHandler**, ela funciona como um **boilerplate** possuindo algum código padrão a todos os **Concret Handlers**, normalmente possui um campo que referencia o próximo **Concret Handler**, também pode funcionar como um **Default Handler**, passando a execução ao próximo **Concret Handler** caso ele exista. Os **Concret Handlers**, são independentes e imutáveis, todos os dados necessários são passados no construtor, a essa altura do campeonado creio não precisar falar o que ele faz. **Client**, esse é o maestro, ele decidirá qual desse ser a corrente e qual o evento que deverá ser processado por ela, uma observação aqui: Mesmo tendo uma cadeia montada o evento pode iniciar sua jornada no meio dele, não no inicio.
+
+BláBláBlá de teoria, como melhorar a classe **CalculadoraDescontos**? Na aula o caminho seguido fui um pouco diferente, criamos uma classe abstrata, a **Desconto**, ela é quem fará a vez da interface.
+
+```java
+//Creio poder chamar essa classe de BaseHandler, pois ela possui o boilerplate das demais
+public abstract class Desconto {
+
+    //Refêrencia ao próximo Concret Handlers
+    protected Desconto proximo;
+
+    //Lembra, receber tudo pelo contrutor
+    public Desconto(Desconto proximo) {
+        this.proximo = proximo;
+    }
+
+    //Processamento que deverá ser implementado pela Concret Handlers
+    public abstract BigDecimal calcular(Orcamento orcamento);
+}
+```
+
+Agora sim, vamos extrair os códigos dos ***ifs*** e os tranformar em **Concret Handler**
+
+```java
+//Concret Handler do BaseHandler
+public class DescontoValorOrcamento extends Desconto{
+    //Recebendo o próximo Concret Handler da cadeia
+    public DescontoValorOrcamento(Desconto proximo) {
+        super(proximo);
+    }
+
+    //Processando a requisição, imutavelmente e independentemente
+    @Override
+    public BigDecimal calcular (Orcamento orcamento){
+        if(orcamento.getValor().compareTo(new BigDecimal("500")) > 0){
+            return orcamento.getValor().multiply(new BigDecimal("0.05"));
+        }
+        return proximo.calcular(orcamento);
+    }
+}
+
+//Concret Handler do BaseHandler
+public class DescontoQuantidadeItens extends Desconto{   
+    //Recebendo o próximo Concret Handler da cadeia 
+    public DescontoQuantidadeItens(Desconto proximo) {
+        super(proximo);
+    }
+
+    //Processando a requisição, imutavelmente e independentemente
+    @Override
+    public BigDecimal calcular(Orcamento orcamento){
+        if(orcamento.getQuantidadeItens().compareTo(5) >= 0){
+            return orcamento.getValor().multiply(new BigDecimal("0.1"));
+        }        
+        return proximo.calcular(orcamento);
+    }
+}
+
+//Concret Handler do BaseHandler, o curinga.
+public class SemDesconto extends Desconto{
+
+    //Deveria receber o próximo Concret Handler, nesse caso essa classe representa o fim da cadeia
+    public SemDesconto() {
+        super(null);
+    }
+
+    //Processando a requisição, imutavelmente e independentemente, é o fim da cadeio por isso ZERO
+    @Override
+    public BigDecimal calcular(Orcamento orcamento) {
+        return BigDecimal.ZERO;
+    }
+    
+}
+```
+
+Nossa calculadora será um tanto quando diferente
+
+```java
+//Não é um Concret Handler, está mais para um serviço
+public class CalculadoraDescontos {
+
+    //Não está sobrescrevendo nada, só definindo a chain
+    public BigDecimal calcular (Orcamento orcamento){
+        //Primeiro Concret Handler da chain
+        Desconto desconto = new DescontoQuantidadeItens(
+            //Primeiro Concret Handler recebe como parâmetro o segundo
+            new DescontoValorOrcamento(
+                //Segundo Concret Handler recebe como parâmetro o terceiro
+                new SemDesconto()
+            )
+        );
+        //Executa o processamento
+        return desconto.calcular(orcamento);
+    }
+}
+```
+
+E por hora é isso, criamos o caos e trouxemos a ordem, agora ficaremos em cima do muro esperando o próximo caos.
+
 ## Template Method
 
 ## State
