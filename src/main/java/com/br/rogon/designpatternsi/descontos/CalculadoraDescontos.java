@@ -7,12 +7,12 @@ import com.br.rogon.designpatternsi.orcamento.Orcamento;
 public class CalculadoraDescontos {
 
     public BigDecimal calcular (Orcamento orcamento){    
-        Desconto desconto = new DescontoQuantidadeItens(
+        Desconto cadeiaDescontos = new DescontoQuantidadeItens(
             new DescontoValorOrcamento(
                 new SemDesconto()
             )
         );
                
-        return desconto.calcular(orcamento);
+        return cadeiaDescontos.calcular(orcamento);
     }
 }

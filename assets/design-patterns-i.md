@@ -2,6 +2,8 @@
 
 Existem 23 padrões, divididos em criacionais, estruturais e comportamentais
 
+Esses padrões nos fazem pensar de forma difernete nosso código
+
 ## Strategy
 
 Eeeii!! começou a brincadeira. Temos a classe **Orcamento**, e, como vivemos no Brasil, faz-se necessário calcular o imposto. A principio iremos calcular o *ICMS* e o *ISS*. Começamemos assim, para facilidar um pouco nosso vida, criaremos um ***enun*** que terá os impostos.
@@ -153,9 +155,12 @@ public class DescontoValorOrcamento extends Desconto{
     //Processando a requisição, imutavelmente e independentemente
     @Override
     public BigDecimal calcular (Orcamento orcamento){
+        //Verifica de deve processar
         if(orcamento.getValor().compareTo(new BigDecimal("500")) > 0){
+            //Processando ...
             return orcamento.getValor().multiply(new BigDecimal("0.05"));
         }
+        //Se não for processar, passa ao próximo Concret Handler
         return proximo.calcular(orcamento);
     }
 }
@@ -170,9 +175,12 @@ public class DescontoQuantidadeItens extends Desconto{
     //Processando a requisição, imutavelmente e independentemente
     @Override
     public BigDecimal calcular(Orcamento orcamento){
+        //Verifica de deve processar
         if(orcamento.getQuantidadeItens().compareTo(5) >= 0){
+            //Processando ...
             return orcamento.getValor().multiply(new BigDecimal("0.1"));
-        }        
+        }
+        //Se não for processar, passa ao próximo Concret Handler    
         return proximo.calcular(orcamento);
     }
 }
@@ -220,8 +228,125 @@ E por hora é isso, criamos o caos e trouxemos a ordem, agora ficaremos em cima 
 
 ## Template Method
 
+Às vezes, mesmo quando tudo parece calmo e tranquilo, podemos melhorar aquilo que já está bom. É o que faremos com o código anterior, ele está bom, mas da para melhorar um tanto mais.
+
+Seremos apresentados ao *Template Method*, ele é exatamente o que o nome diz, *template*. Agora vamos explicar o desenho.
+
+> Esse é um padrão comportamental que define o esqueleto de um algoritimo na superclasse, as etapas podem ser sobrescritas pelas subclasses, não causando a modificação do algoritimo.
+
+Ou mais simplista, é a forma e bolo que deverá ser colocada no formo, que após um tempo sairá com o bolo assado. Esse é o algoritimo, o bolo que estará na forma, pouco importa, a receita pode sobscreve-lo sem prejudicar o resultado, o bolo sairá assado no final, só não conseguimos garantir um bolo gostoso e fofinho.
+
+Vamos agora á um exemplo na Matriz, terminando o capítulo anterior com três **Concrets Handlers**, se você notar todos ele possuem o mesmo ***if*** com basicamente a mesma lógica, se tal condição for satisfeita, faça tal coisa, senão, faz essa outra aqui. Temos um padrão se repedindo aqui.
+
+No objeto de estudo diz que devemos quebrar esse algoritimo em uma série de etapas, as transformas em métodos, e coloca-las em um único local. Nele as etapas podem ser **abstratas**, ou possuir algum implementação. As classes concretas, devem implementar o métodos abstratos e se quiser sobescrever os implementados. É obvio que o método padrão, aquele que executará a lógica, não deve ser sobrescrito.
+
+Então criaremos nossa classe padrão com as chamadas necessárias para que o bolo saia quentinho do forno.
+
+```java
+public abstract class Desconto {
+
+    protected Desconto proximo;
+
+    public Desconto(Desconto proximo) {
+        this.proximo = proximo;
+    }
+
+    //Método que representa o algoritimo.
+    //Note que ele é final, não poderá ser sobrescrito.
+    public final BigDecimal calcular(Orcamento orcamento){
+        if(deveAplicar(orcamento)){
+            return efetuarCalculo(orcamento);
+        }
+        return proximo.calcular(orcamento);
+    };
+
+    //métodos que devem ser implementados para executar o algoritimo.
+    protected abstract BigDecimal efetuarCalculo(Orcamento orcamento);
+    protected abstract boolean deveAplicar(Orcamento orcamento);
+}
+```
+
+Veja que no fundo, só melhoramos nossa classe **Desconto**. Nesse exemplo não temos métodos padrões, mas imagine que um dos passos seja abrir um arquivo, o mesmo arquivo sempre, ele poderia ser implementado direto no *template*. Existe um outro tipo de método os ***hooks***, ela seria uma etapa com o corpo vazio, geralmente colocada entre pontos cruciais do algoritimo. O algoritimo funciona mesmo sem eles serem implementados.
+
+Veja, nosso *template* para assar um bolo, não impede que ele seja assado à banho maria. Ela é um etapa sem corpo, se não for implementada o bolo será assado da forma "normal", se for será assado na forma da implementação.
+
+```java
+public class DescontoQuantidadeItens extends Desconto{    
+    public DescontoQuantidadeItens(Desconto proximo) {
+        super(proximo);
+    }
+
+    //Sobrescrevendo a etapa
+    @Override
+    public BigDecimal efetuarCalculo(Orcamento orcamento){
+        return orcamento.getValor().multiply(new BigDecimal("0.1"));  
+    }
+
+    //Sobrescrevendo a etapa
+    @Override
+    public boolean deveAplicar(Orcamento orcamento) {   
+        return orcamento.getQuantidadeItens().compareTo(5) >= 0;
+    }        
+}
+
+public class DescontoValorOrcamento extends Desconto{
+    public DescontoValorOrcamento(Desconto proximo) {
+        super(proximo);
+    }
+
+    //Sobrescrevendo a etapa
+    @Override
+    public BigDecimal efetuarCalculo (Orcamento orcamento){       
+        return orcamento.getValor().multiply(new BigDecimal("0.05"));       
+    }
+
+    //Sobrescrevendo a etapa
+    @Override
+    public boolean deveAplicar(Orcamento orcamento) {
+        return orcamento.getValor().compareTo(new BigDecimal("500")) > 0;
+    }
+}
+
+public class SemDesconto extends Desconto{
+
+    public SemDesconto() {
+        super(null);
+    }
+
+    //Sobrescrevendo a etapa
+    @Override
+    public BigDecimal efetuarCalculo(Orcamento orcamento) {
+        return BigDecimal.ZERO;
+    }
+
+    //Sobrescrevendo a etapa
+    @Override
+    public boolean deveAplicar(Orcamento orcamento) {
+        return true;
+    }    
+}
+```
+
+Os código duplicados foram-se embora. Lindo de mais.
+
+>Esse padrão me respondeu a uma pergunta que sempre fiz: *Mas eu tenho que ficar duplicando esse pedaço de código, mesmo que seja um if pequeno?*
+
 ## State
 
 ## Command
 
 ## Observer
+
+## Referências
+
+[REFACTORING GURU - Strategy](https://refactoring.guru/pt-br/design-patterns/strategy)
+
+[REFACTORING GURU - Chain of Responsability](https://refactoring.guru/pt-br/design-patterns/chain-of-responsibility)
+
+[REFACTORING GURU - Template Method](https://refactoring.guru/design-patterns/template-method)
+
+[REFACTORING GURU - State](https://refactoring.guru/pt-br/design-patterns/state)
+
+[REFACTORING GURU - Command](https://refactoring.guru/pt-br/design-patterns/command)
+
+[REFACTORING GURU - Observer](https://refactoring.guru/pt-br/design-patterns/observer)
