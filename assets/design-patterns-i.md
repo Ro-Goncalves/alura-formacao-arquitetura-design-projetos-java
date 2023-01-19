@@ -34,7 +34,7 @@ public class CalculadoraDeImpostos {
 
 *Mais aqui é Brasil "véi"*, só pensa o caralhada de impostos que pode ter, o quando essa classe pode crescer. Teremos um monte de ***cases*** ou ***ifs/elses***, ler isso seria um tormento. E é aqui que começamos a usar nossos padrões.
 
-Aplicando o *Strategy* nesse caso iremos definir classes que calculam o imposto, cada uma o seu, já começamos com o **S**. Sem contar que iremos criar a interface **Imposto**, toda classe que calculará o imposto deverá implementá-la. Pensem, isso deve lhe lembrar alguma letra um **O**, mesclado com **D**. O **D** é auto evidente, estamos dependendo de uma interface e não de classes concretas. O **O** ficará mais claro à frente.
+Aplicando o *Strategy* nesse caso iremos definir classes que calculam o imposto, cada uma o seu, já começamos com o **S**. Sem contar que iremos criar a interface **Imposto**, toda classe que calculará o imposto deverá implementá-la. Pensem, isso deve lhe lembrar alguma letra, um **O**, mesclado com **D**. O **D** é auto evidente, estamos dependendo de uma interface e não de classes concretas. O **O** ficará mais claro à frente.
 
 Nossa interface será bem simples:
 
@@ -78,7 +78,7 @@ Isso é o **Strategy**, retuzir os ***ifs*** e ***cases*** abstratindo suas lóg
 
 Podemos definir o *Strategy* da seguinte forma:
 
->Padrão comportalemntal que permite definir uma família de algoritmos, tornando seus objetos intercambiáveis.
+>Padrão comportamental que permite definir uma família de algoritmos, tornando seus objetos intercambiáveis.
 
 Conseguimos ver isso muito bem no exemplo, separamos nossa regra que calcula o imposto, e para qualquer calculo para passar uma delas para a classe **CalculadoraDeImpostos**. Não é só disso que vive o *Strategy*; como diria Cesar *divide et impera*, ou Napoleão *divide ut regnes*, como diria o afegão médio, dividir para conquistar, élo que entendi é esse o espirito desse padrão. Em nosso exemplo, dividimos as regras de calculo do imposto e duas classes, um outro que podemos citar são classes que vão recebendo mais e mais lógica, uma classe que calcula rotas, um dia ela calcula uma de carro, no outro a pé, no outros de bicicleta, e fácil ver que ela pode crescer muito.
 
@@ -333,6 +333,194 @@ Os código duplicados foram-se embora. Lindo de mais.
 
 ## State
 
+Nem sempre os requisitos ficam tanto tempo se se alterar, essas merda sempre muda, então, vamos de novidade. Nosso orçamento terá algumas situações agora, a saber: *Aprovado, EmAnalise, Finalizado, Reprovado*, cada uma delas definirá para qual situação o orçamento pode ir, bem como um novo desconto, sempre tem aquela pessoa que chora por um pouco mais de desconto.
+
+Uma coisa que devo colocar em minha cabeça e você também:
+
+>Começe simples, resolva o problema, depois identifique o que pode ser melhorado. Às vezes é fácil identificar um padrão, às vezes não.
+
+Sendo assim, vamos ao simples.
+
+```java
+public class Orcamento {
+    private BigDecimal valor;
+    private Integer quantidadeItens;
+    //Situação como String, já vimos que não é o ideal, deixa estar
+    private String situacao;
+
+    public Orcamento(BigDecimal valor, Integer quantidadeItens) {
+        this.valor = valor;
+        this.quantidadeItens = quantidadeItens;
+    }
+
+    //Calcula o choro
+    public void aplicarDescontoExtra(){
+        BigDecimal valorDoDescontoExtra = BigDecimal.ZERO;
+        //Ifs, estamos os odiando agora, mas espere.
+        if(situacao.equalsIgnoreCase("EM_ANALISE")){
+            //Um pouco mais de desconto para ver se aprova
+            valorDoDescontoExtra = new BigDecimal("0.05");
+        } else if (situacao.equalsIgnoreCase("APROVADO")){
+            //Depois que aprovou, um pouco menos, só para pagar com PIX
+            valorDoDescontoExtra = new BigDecimal("0.02");
+        }
+
+        this.valor = this.valor.subtract(valorDoDescontoExtra);
+    }
+
+    //Troca situação para aprovado
+    public void aprovar(){
+        this.situacao = "APROVADO";
+    }
+    //(Troca demais situações, e o resto dos métodos)...
+}
+```
+
+Parece um **Strategy**, mas não é, esse cria uma família de algoritmos que podem ser intercambiáveis entre sí, ele resolve o problemas em que existem varias soluções semelhantes, calcule a rota a pé, calcule a rota para um carro, calcule a rota para um navio, é sempre calcule a rota para algo. Agora temos uma alteração de estado para um mesmo objeto.
+
+Em cenários como esse usamos o **State**, ele é mais um padrçao comportamental, permite que o objeto altere seu estado, como se alterasse de classe.
+
+Ele está relacionado ao conceito de *Máquina de Estado Finito*, aqui eu irei copiar a referência, ficou muito bom o que ele escreveu.
+
+>"A ideia principal é que, em qualquer dado momento, há um número *finito* de *estados* que um programa possa estar. Dentro de qualquer estdo único, o programa se comporta de forma diferente, e o programa pode ser trocado de um estado para outro instantaneamente. Contudo, dependendo do estado atual, o programa pode ou não trocar para outros estados. Essas regras de troca, chamadas *transições*, também são finitas e pré determinadas." ***[REFACTORING GURU - State](https://refactoring.guru/pt-br/design-patterns/state)***
+
+Esse é exatamente o nosso caso, o orçamento passa por diversas transformações ao longo do tempo, e em cada estado ele deve se comportar um pouco diferente. E a solução o famigerado **S**; cada macado no seu galho; cada estado em sua classe, e o objeto original tem um referência a ela. Primeira pergunta, tenho 15 estados, devo ter 15 referências em minha classe original? não "mane", aqui é **POO** e **D**, basta criar uma boa abstração para os estados, e fazer com que todos herdem ele, pode ser uma interface ou classe abstrata, tudo depende do frequês.
+
+Tudo parece claro, mas quando vamos fazer sozinhos algo de errado, isso quer dizer que não absorvemos o conteúdo de forma adquada. Então, uma receita de bolo.
+
+O **Context** armazena um referência a um **Concrete State**, delegando a ele todo o trabalho específico do estado. Essa comunicação é feita através de uma *interface* ou *abstract class*. Ele expõe um método para definir o novo estado.
+
+A **Interface State** ou **Abstract class State**, declara os métodos dos estado, cuidado com o **L**.
+
+**Concrete State**, é o estado em sí, dependendo do caso podemos ter classes abstratas de suporte, imagina que dois estados podem fazer mais ou menos a mesma coisa. Eles podem possuir um referência ao **Context**. Tanto o **Concrete State** e o **Context** podem fazer transição de estado.
+
+Show, dito isso, vamos mexer o bolo.
+
+Primeiro nossa abstração. Criaremos a classe `SituacaoOrcamento`, abstrata, e não interface, porque queremos algumas implementações padrão, e podemos ou não implementar o método na classe concreta.
+
+```java
+public abstract class SituacaoOrcamento {
+
+    //Podemos não querer dar desconto. Comportamento de cada estado
+    public BigDecimal calcularValorDescontoExtra(Orcamento orcamento){
+        return BigDecimal.ZERO;
+    }
+
+    /*
+     * Métodos que fazerm a transição de estado. 
+     * Caso não sobrescrito retornará um erro.
+    */
+    public void aprovar(Orcamento orcamento){
+        throw new DomainException("Orçamento não pode ser aprovado!");
+    }
+
+    public void reprovar(Orcamento orcamento) {
+        throw new DomainException("Orçamento não pode ser reprovado!");
+    }
+
+    public void finalizar(Orcamento orcamento) {
+        throw new DomainException("Orçamento não pode ser finalizado!");
+    }
+}
+```
+
+Os **Concrets States**.
+
+```java
+public class EmAnalise extends SituacaoOrcamento{
+    /*
+     * O início.
+     * O orçamento pode ser aprovado ou reprovado.
+    */
+    @Override
+    public BigDecimal calcularValorDescontoExtra(Orcamento orcamento){
+        return orcamento.getValor().multiply(new BigDecimal("0.05"));
+    }
+
+    @Override
+    public void aprovar(Orcamento orcamento){
+        orcamento.setSituacao(new Aprovado());
+    }
+
+    @Override
+    public void reprovar(Orcamento orcamento){
+        orcamento.setSituacao(new Reprovado());
+    }
+}
+
+public class Aprovado extends SituacaoOrcamento{
+    /*
+     * Não implementaremos todos os métodos, herdará o padrão.
+     * Se estou aprovado, só posso finalizar
+    */
+    @Override
+    public BigDecimal calcularValorDescontoExtra(Orcamento orcamento){
+        return orcamento.getValor().multiply(new BigDecimal("0.02"));
+    }
+
+    @Override
+    public void finalizar(Orcamento orcamento){
+        orcamento.setSituacao(new Finalizado());
+    }
+}
+
+public class Reprovado extends SituacaoOrcamento{
+    /*
+     * Se estou reprovado, só posso ser finalizado
+    */
+    @Override
+    public void finalizar(Orcamento orcamento){
+        orcamento.setSituacao(new Finalizado());
+    }
+}
+
+public class Finalizado extends SituacaoOrcamento{
+   //Se estou finalizado, não posso fazer mais nada.
+}
+```
+
+E agora a nossa classe **Context**
+
+```java
+public class Orcamento {
+    private BigDecimal valor;
+    private Integer quantidadeItens;
+    //Não é mais uma String, grande evolução
+    private SituacaoOrcamento situacao;
+
+    public Orcamento(BigDecimal valor, Integer quantidadeItens) {
+        this.valor = valor;
+        this.quantidadeItens = quantidadeItens;
+        //Estado inicial do role
+        this.situacao = new EmAnalise();
+    }
+
+    //Delega o calculo de desconto para o estado.
+    public void aplicarDescontoExtra(){
+        BigDecimal valorDoDescontoExtra = this.situacao.calcularValorDescontoExtra(this);
+        this.valor = this.valor.subtract(valorDoDescontoExtra);
+    }
+
+    /*
+     * As transições tão serão delegadas.
+    */
+    public void aprova(){
+        this.situacao.aprovar(this);
+    }
+
+    public void reprovar(){
+        this.situacao.reprovar(this);
+    }
+
+    public void finalizar(){
+        this.situacao.finalizar(this);
+    }
+    //...
+}
+```
+
+Top, por hoje é isso ai.
+
 ## Command
 
 ## Observer
@@ -350,3 +538,5 @@ Os código duplicados foram-se embora. Lindo de mais.
 [REFACTORING GURU - Command](https://refactoring.guru/pt-br/design-patterns/command)
 
 [REFACTORING GURU - Observer](https://refactoring.guru/pt-br/design-patterns/observer)
+
+[RICARDO KERSCHBAUMER - INTRODUÇÃO À MÁQUINA DE ESTADO FINITA EM LIGUAGEM C](https://professor.luzerna.ifc.edu.br/ricardo-kerschbaumer/wp-content/uploads/sites/43/2021/04/Maquinas-de-Estado.pdf)
