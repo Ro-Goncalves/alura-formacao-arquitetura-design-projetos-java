@@ -523,6 +523,178 @@ Top, por hoje é isso ai.
 
 ## Command
 
+Agora o bixo vai pegar, esse padrão está sendo um pouco complicado para entender. Se Deus quiser, até eu terminar a descrição dele irei enteder, e quem estiver lendo também.
+
+Em resumo, podemos dizer que esse padrão transforma o pedido em um objeto que contém toda a informação sobre ele. Com isso, podemos configurar os pedidos de várias formas, coloca-los em fila, serializa e deserializar o pedido, em fim, qualquer coisa que você faria com um objeto.
+
+Eu sou muito pouco criativo, e inexperiente também, para criar um exemplo por mim mesmo. Por isso, se eu for insuficiente recomendo a leitura da referência: ***[REFACTORING GURU - Command](https://refactoring.guru/pt-br/design-patterns/command)***.
+
+Dito isso, imagine que você tem alguma classe, muito bonita e bem produzida, que executa alguma rotina, ela é usada em várias subclasses, que executam rotinas mais específicas. Quem saber isso pode ajudar, você te uma receita base de bolo, farinha, ovo, leite, fermento, manteiga, certo, porém você pode fazer dezenas de váriações com a mesma receita, você pode ter um bolo de maracujá, um de chocolate, um de cenoura, um de cenoura com laranja, um de laraja. Até aí parece OK, você tem uma subclasse para cada bolo, mas todas elas estão sucetivéis a alterações no classe bolo, se você trocar a farinha, mudar a proporção de alguma coisa, tudo pode dar errado. Criamos um código altamente dependente de nosssa regra de negocio.
+
+E ainda ficou pior do que o imaginado, veja temo bolo de lanraja, bolo de cenoura, e bolo de cenoura com laranja; tivemos que duplicar código.
+
+Esse é nosso problema, uma classe que serviu de base para várias outras, criando uma dependência grande delas com a regra de négocio, que pode mudar de uma hora para outra, sem contar que até duplicamos código dentro das subclasses.
+
+É hora de pensar em uma solução. Hora de invogar a máxima: ***divide et impera***. Normalmente uma aplicação é dividia em camadas, o famigerado **MVC**, onde podemos separar a lógica de négocio da interface gráfica. Podemos descrever essa interação da seguinte forma: A GUI chama um método da camada de negócio passando os argumentos, **falamos que um objeto está enviando um *pedido* para outro.**.
+
+Nosso objeto de estudo, sugere que esse pedido não seja enviado diretamente. Ele deve enviar à classe ***Command***, essa classe contém tudo o que é necessário para realizar o pedido e um método de execução.
+
+Esse objeto **Command** funciona como um link entre a GUI e a lógica de negócio, é a **Command** que fará o serviço sujo. Você pode ter botões em locais diferentes que executam a mesma ação, salvar alguma coisa, todos eles podem utilizar o ***Save Comand***.
+
+Já conseguimos ver uma melhora, indo além, cada **Command** deve implementar a mesma interface, ela geralmente contém o método de execução, que não recebe parâmetro algum. Isso resolve o problema de acoplamento. Agora nosso rementente tem uma referência à essa interface, temos várias **Command** que a implementam, logo, o comportamento do rementente pode ser alterado em tempo de execução, pasta conter o método `setCommand(InterfaceCommand command)`.
+
+Vamos ao que falta, os parâmetros de execução. Ou nosso comando é pré-configurado, ou é capaz de obtê-los por si mesmo.
+
+Vimos até aqui que podemos criar somente uma classe, sem um monte de filhas, essa classe contém apenas um referência a uma interface command, essa referência pode receber toda sorte de command que queremos. Teremos tantos commands quando execuções que desejamos.
+
+Agora em tecniques. Temos um **Invoker**, ou remetente, é ele que inicia o pedido. Como já dito, ele possuí um campo que referência algum **Command**, ele possui o método `setCommand(command)` que é configurado pelo cliente, ou recebe pelo seu construtor. E um método de execução, `executeCommand()`, que a delegará ao **Command**.
+
+A interface **Command**, só tem o método `execute()`, àquele que é executado pelo **Invoker**.
+
+Os **Concrete Command**, quem realmente realizará o serviço sujo, o peão de obra, chão de fábrica. Ele pode delegar a execução do trabalho para uma das classes que controlam a regra de négocio, pode até ficar nele para facilitar o role, vai do frequês. Os parâmetros podem ser os campos desse objeto, e para que ele seja imutavél, deve recebê-los pelo contrutor.
+
+**Reciver**, se nosso **Concrete Command** delegar a execução da lógica, será para os **Reciveres**, dessa forma o **Concrete Command** terá os detalhes do pedido, e o **Reciver** executará a lógica.
+
+Sobra para nosso **Client** criar e configurar o **Concrete Command**, passa todos os parâmetros, inclusive a instância do **Reciver**, para o contrutor do **Concrete Command**.
+
+Ufa, chegamos ao fim, e tenho uam breve imagem em minha cabeça de como esse padrão funciona. Bora à aula da Alura.
+
+Começemos criando a classe que representará o pedido.
+
+```java
+public class Pedido {
+    
+    private String cliente;
+    private LocalDateTime data;
+    private Orcamento orcamento;
+
+    public Pedido(String cliente, LocalDateTime data, Orcamento orcamento) {
+        this.cliente = cliente;
+        this.data = data;
+        this.orcamento = orcamento;
+    }
+
+    public String getCliente() {
+        return cliente;
+    }
+
+    public LocalDateTime getData() {
+        return data;
+    }
+
+    public Orcamento getOrcamento() {
+        return orcamento;
+    }    
+}
+```
+
+Primeiro, em nosso cliente, descreveremos o que deve ser executado.
+
+```java
+public class TestePedido {
+    public static void main(String[] args) {
+        Orcamento orcamento = new Orcamento(new BigDecimal("600"), 4);
+        String cliente = "Rodrigo Gonçalves";
+        LocalDateTime data = LocalDateTime.now();
+
+        //Criamos o pedido.
+        Pedido pedido = new Pedido(cliente, data, orcamento);
+
+        //Executamos alguma regra de négocio.
+        System.out.println("Salvar Pedido no Banco de Dados.");
+        System.out.println("Enviar e-mail com dados donovo pedido.");
+    }
+}
+```
+
+Nosso exemplo é um pouco diferente do que foi comentado, aqui toda a regra de négocio está no cliente, o que é pior inda. Para resolver isso, vamos criar uma classe que será a responsável por gerar o pedido e controlar a execução das rotinas.
+
+```java
+public class GeraPedido {
+    
+    private String cliente;
+    private BigDecimal valorOrcamento;
+    private Integer quantidadeItens;
+
+    //Injeção de dependências: PedidoRepository, EmailService,... Polui.
+    public GeraPedido(String cliente, BigDecimal valorOrcamento, Integer quantidadeItens) {
+        this.cliente = cliente;
+        this.valorOrcamento = valorOrcamento;
+        this.quantidadeItens = quantidadeItens;
+    }
+
+    public void executa(){
+        Orcamento orcamento = new Orcamento(this.valorOrcamento, this.quantidadeItens); 
+        Pedido pedido = new Pedido(this.cliente, LocalDateTime.now(), orcamento);
+
+        System.out.println("Salvar Pedido no Banco de Dados.");
+        System.out.println("Enviar e-mail com dados donovo pedido.");
+    }
+}
+```
+
+Essa poderia ser uma das classes **Concretes Commandes**, só que ela não está tão legal assim. Ela faz muita coisa, tem os dados do pedido, recebe uma referência a classe que salvará o pedido e outra para uma que enviará o e-mail. Tá, vamos remover toda essa lógica dela, e deixa-la tratando somente dos parâmetros do pedido.
+
+```java
+public class GeraPedido {
+    
+    private String cliente;
+    private BigDecimal valorOrcamento;
+    private Integer quantidadeItens;
+
+    public GeraPedido(String cliente, BigDecimal valorOrcamento, Integer quantidadeItens) {
+        this.cliente = cliente;
+        this.valorOrcamento = valorOrcamento;
+        this.quantidadeItens = quantidadeItens;
+    }
+
+    public String getCliente() {
+        return cliente;
+    }
+
+    public BigDecimal getValorOrcamento() {
+        return valorOrcamento;
+    }
+
+    public Integer getQuantidadeItens() {
+        return quantidadeItens;
+    }   
+}
+```
+
+E quem irá executar a lógica de négocio será outra classe. Note que ela consegue criar o **Orcamento**, o **Pedido**, e executar algumas rotinas, e possui somente o método execute.
+
+```java
+public class GeraPedidoHandler {
+    
+    //Construtos com injeção de dependências.
+    
+    public void execute(GeraPedido dados){
+        Orcamento orcamento = new Orcamento(dados.getValorOrcamento(), dados.getQuantidadeItens()); 
+        Pedido pedido = new Pedido(dados.getCliente(), LocalDateTime.now(), orcamento);
+
+        System.out.println("Salvar Pedido no Banco de Dados.");
+        System.out.println("Enviar e-mail com dados donovo pedido.");
+    }
+}
+```
+
+E o cliente, como fica? Muito complicado, veja só
+
+```java
+public class TestePedido {
+    public static void main(String[] args) {
+        String cliente = "Rodrigo";
+        BigDecimal valorOrcamento = new BigDecimal("600.00");
+        Integer quantidadeItens = 4;
+
+        GeraPedido gerador = new GeraPedido(cliente, valorOrcamento, quantidadeItens);
+        GeraPedidoHandler handler = new GeraPedidoHandler(/* Dependências */);
+        handler.execute(gerador);   
+    }
+}
+```
+
 ## Observer
 
 ## Referências
