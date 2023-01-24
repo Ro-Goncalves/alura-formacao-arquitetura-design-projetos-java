@@ -56,4 +56,9 @@ public class Orcamento {
     public void setQuantidadeItens(Integer quantidadeItens) {
         this.quantidadeItens = quantidadeItens;
     }
+
+    @Override
+    public String toString() {
+        return "Orcamento [valor=" + valor + ", quantidadeItens=" + quantidadeItens + "]";
+    }
 }
