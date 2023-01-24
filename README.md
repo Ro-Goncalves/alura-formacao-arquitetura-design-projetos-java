@@ -9,5 +9,8 @@ Rogo a Deus para que me mantenha na busca pela Verdade, tudo o que eu faça que 
 ## Cursos Das Formação
 
 * [S.O.L.I.D. Com Java: Pincípios da Programação Orientada a Objetos](assets/solid.md)
-  * Pacote do projeto: `com.br.rogon.arquiteturadesignjava.solid`.
+  * Pacote do Projeto: `com.br.rogon.arquiteturadesignjava.solid`.
   * Link do Curso: [Alura - S.O.L.I.D. Com Java](https://www.alura.com.br/curso-online-solid-orientacao-objetos-java)
+* [Design Patterns em Java I: Boas Práticas de Programação](assets/design-patterns-i.md)
+  * Pacote do Projeto: `com.br.rogon.arquiteturadesignjava.designpatternsi`
+  * Link do Curso: [Alura - Design Patterns em Java I](https://www.alura.com.br/curso-online-introducao-design-patterns-java)
